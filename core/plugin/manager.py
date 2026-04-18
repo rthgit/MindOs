@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from core.platform.host import platform_key
 from core.plugin.catalog import PLUGIN_CATALOG, available_plugins
@@ -32,10 +33,33 @@ class PluginManager:
         self.trust_policy = TrustPolicy.from_config(trust_policy_config)
         self.sandbox_policy = ProgramSandboxPolicy.from_config(sandbox_policy_config)
         self.external_program_registry_file = external_program_registry_file
-        self.program_catalog = merge_program_catalog(external_registry_file=external_program_registry_file)
+        self.program_catalog, self.external_registry_meta = merge_program_catalog(
+            external_registry_file=external_program_registry_file
+        )
         self.state_file = self.data_dir / "installed_plugins.json"
         self.lock_file = self.data_dir / "plugins.lock.json"
+        self._validate_external_registry()
         self._ensure_files()
+
+    def _validate_external_registry(self) -> None:
+        meta = self.external_registry_meta or {}
+        mode = str(meta.get("mode", ""))
+        if mode != "signed-envelope":
+            return
+        signer = str(meta.get("signer", ""))
+        signature = meta.get("signature")
+        expected_integrity = str(meta.get("integrity", ""))
+        actual_integrity = str(meta.get("programs_integrity", ""))
+        expires_at = meta.get("expires_at_epoch")
+        if expires_at is not None and int(time.time()) > int(expires_at):
+            raise PermissionError("External program registry expired")
+        self.trust_policy.assert_trusted(
+            plugin_id="external-program-registry",
+            signer=signer,
+            expected_integrity=expected_integrity,
+            actual_integrity=actual_integrity,
+            signature=signature,
+        )
 
     def _ensure_files(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

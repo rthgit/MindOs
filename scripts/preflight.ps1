@@ -96,8 +96,11 @@ $ciEnvPath = Join-Path $tmpRoot "runtime.env.json"
       "require_signature": true,
       "trusted_signers": ["core-team"],
       "revoked_signers": [],
+      "revoked_key_ids": [],
       "signer_keys": {
-        "core-team": "core-team-dev-key"
+        "core-team": {
+          "core-v1": "core-team-dev-key"
+        }
       }
     },
     "program_sandbox": {

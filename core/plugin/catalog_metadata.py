@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Any, Dict
 
 from core.plugin.trust import build_integrity_hash, sign_integrity
 
@@ -14,7 +14,7 @@ class InternalPluginMetadata:
     deterministic: bool
     signer: str
     integrity: str
-    signature: str
+    signature: Any
 
 
 def _mk(plugin_id: str, version: str, capabilities: tuple[str, ...], deterministic: bool, signer: str) -> InternalPluginMetadata:
@@ -25,7 +25,7 @@ def _mk(plugin_id: str, version: str, capabilities: tuple[str, ...], determinist
         capabilities=capabilities,
         deterministic=deterministic,
     )
-    signature = sign_integrity(integrity=integrity, signer_key="core-team-dev-key")
+    signature = sign_integrity(integrity=integrity, signer_key="core-team-dev-key", key_id="core-v1")
     return InternalPluginMetadata(
         plugin_id=plugin_id,
         version=version,

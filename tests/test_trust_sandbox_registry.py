@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 from core.bootstrap.loader import boot_system
+from core.plugin.program_catalog import build_registry_integrity
 from core.plugin.trust import build_integrity_hash, sign_integrity
 
 
@@ -70,14 +72,15 @@ class TrustSandboxRegistryTest(unittest.TestCase):
         }
         env["policy"]["plugin_trust"]["require_signature"] = True
         env["policy"]["plugin_trust"]["revoked_signers"] = []
+        env["policy"]["plugin_trust"]["revoked_key_ids"] = []
         env["policy"]["plugin_trust"]["signer_keys"] = {
-            "core-team": "core-team-dev-key",
-            "unknown-signer": "unknown-signer-dev-key",
+            "core-team": {"core-v1": "core-team-dev-key", "core-v2": "core-team-next-key"},
+            "unknown-signer": {"u-v1": "unknown-signer-dev-key"},
         }
         env_path.write_text(json.dumps(env), encoding="utf-8")
         return env_path
 
-    def _write_external_registry(self, signer: str = "core-team") -> None:
+    def _write_external_registry(self, signer: str = "core-team", *, envelope: bool = False, expired: bool = False) -> None:
         command_by_platform = {
             "windows": ["powershell", "-NoProfile", "-Command", "Write-Output"],
             "linux": ["/bin/echo"],
@@ -100,9 +103,31 @@ class TrustSandboxRegistryTest(unittest.TestCase):
             "install_by_platform": {},
             "signer": signer,
             "integrity": integrity,
-            "signature": sign_integrity(integrity=integrity, signer_key=signer_key),
+            "signature": sign_integrity(
+                integrity=integrity,
+                signer_key=signer_key,
+                key_id="core-v1" if signer == "core-team" else "u-v1",
+            ),
         }
-        self.registry_file.write_text(json.dumps([row]), encoding="utf-8")
+        if not envelope:
+            self.registry_file.write_text(json.dumps([row]), encoding="utf-8")
+            return
+
+        programs = [row]
+        reg_integrity = build_registry_integrity(programs)
+        now = int(time.time())
+        meta = {
+            "signer": signer,
+            "integrity": reg_integrity,
+            "signature": sign_integrity(
+                integrity=reg_integrity,
+                signer_key=signer_key,
+                key_id="core-v1" if signer == "core-team" else "u-v1",
+            ),
+            "issued_at_epoch": now,
+            "expires_at_epoch": (now - 1) if expired else (now + 10_000_000),
+        }
+        self.registry_file.write_text(json.dumps({"meta": meta, "programs": programs}), encoding="utf-8")
 
     def test_untrusted_signer_is_blocked(self) -> None:
         self._write_external_registry(signer="unknown-signer")
@@ -166,6 +191,29 @@ class TrustSandboxRegistryTest(unittest.TestCase):
         system = boot_system(str(env))
         with self.assertRaises(PermissionError):
             system["plugin_manager"].install_program("custom.echo.program.v1")
+
+    def test_signed_envelope_registry_is_validated(self) -> None:
+        self._write_external_registry(signer="core-team", envelope=True)
+        env = self._write_env(
+            trusted_signers=["core-team"],
+            allow_real_execution=True,
+            allowed_exec_caps=["program.echo.execute"],
+            bootstrap_plugins=[],
+        )
+        system = boot_system(str(env))
+        install = system["plugin_manager"].install_program("custom.echo.program.v1")
+        self.assertEqual(install["status"], "installed")
+
+    def test_expired_signed_envelope_is_blocked(self) -> None:
+        self._write_external_registry(signer="core-team", envelope=True, expired=True)
+        env = self._write_env(
+            trusted_signers=["core-team"],
+            allow_real_execution=True,
+            allowed_exec_caps=["program.echo.execute"],
+            bootstrap_plugins=[],
+        )
+        with self.assertRaises(PermissionError):
+            boot_system(str(env))
 
 
 if __name__ == "__main__":
