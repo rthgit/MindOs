@@ -207,7 +207,50 @@ python -m surfaces.desktop.shell --project demo-project --document-title "Doc" -
 - `http://...`
 - `https://...`
 
-Formato JSON (array):
+Formato supportato:
+
+- **Legacy**: array JSON di programmi (retrocompatibilità).
+- **Preferred**: envelope firmato con metadata (`meta`) + `programs`.
+
+### 7.1 Formato envelope firmato (raccomandato)
+
+```json
+{
+  "meta": {
+    "signer": "core-team",
+    "integrity": "<sha256-registry>",
+    "signature": {
+      "alg": "hmac-sha256-v1",
+      "key_id": "core-v1",
+      "sig": "<signature>"
+    },
+    "issued_at_epoch": 1760000000,
+    "expires_at_epoch": 1760086400
+  },
+  "programs": [
+    {
+      "plugin_id": "custom.echo.program.v1",
+      "version": "1.0.0",
+      "capabilities": ["program.custom.execute"],
+      "deterministic": true,
+      "command_by_platform": {
+        "windows": ["powershell", "-NoProfile", "-Command", "Write-Output"],
+        "linux": ["/bin/echo"]
+      },
+      "install_by_platform": {},
+      "signer": "core-team",
+      "integrity": "<sha256-program>",
+      "signature": {
+        "alg": "hmac-sha256-v1",
+        "key_id": "core-v1",
+        "sig": "<signature>"
+      }
+    }
+  ]
+}
+```
+
+### 7.2 Formato legacy (compatibile)
 
 ```json
 [
@@ -223,7 +266,11 @@ Formato JSON (array):
     "install_by_platform": {},
     "signer": "core-team",
     "integrity": "<sha256>",
-    "signature": "<hmac-sha256>"
+    "signature": {
+      "alg": "hmac-sha256-v1",
+      "key_id": "core-v1",
+      "sig": "<signature>"
+    }
   }
 ]
 ```
@@ -235,11 +282,14 @@ Formato JSON (array):
 ### 8.1 Trust chain plugin/programmi
 
 - `integrity` obbligatoria (hash payload canonico).
-- `signature` obbligatoria (HMAC) se `require_signature=true`.
+- `signature` obbligatoria (HMAC con envelope strutturato) se `require_signature=true`.
 - `signer` deve essere:
   - in `trusted_signers`
   - non in `revoked_signers`
   - con chiave presente in `signer_keys`.
+- supporto **key rotation** con `key_id`.
+- revoca chiavi granulari con `revoked_key_ids` (formato `signer:key_id`).
+- registry esterno firmato con controllo expiry (`expires_at_epoch`).
 
 ### 8.2 ACL
 
@@ -284,6 +334,36 @@ La suite valida:
 - flow CLI->IDE->resume->rollback
 - ciclo plugin manager
 - ciclo programma cross-platform come plugin.
+
+### 9.3 Metriche test e qualità (baseline attuale)
+
+Baseline verificata localmente:
+
+- **Test totali**: `24`
+- **Esito**: `OK`
+- **Pipeline**: `scripts/ci_local.ps1` -> bootstrap + preflight + unit/integration/E2E
+- **Installer smoke**: `scripts/install_os.ps1` verde
+
+Comandi canonical:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\ci_local.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\install_os.ps1
+```
+
+### 9.4 Matrice test dettagliata
+
+| File test | Copertura principale |
+|---|---|
+| `tests/test_e2e_vertical_slice.py` | Vertical slice E2E, continuità CLI->IDE, audit, rollback |
+| `tests/test_guardrails_and_plugins.py` | Guardrail azioni sensibili, reject plugin non deterministici |
+| `tests/test_workflow_presentation.py` | Pipeline documento->presentazione, memoria procedurale |
+| `tests/test_policy_and_desktop.py` | ACL/policy + workflow desktop unificato |
+| `tests/test_scheduler.py` | Scheduler ricorrente, max-runs, disable automatico |
+| `tests/test_plugin_manager.py` | Ciclo plugin manager install/list/remove/upgrade |
+| `tests/test_program_plugins.py` | Programmi come plugin cross-platform via orchestratore |
+| `tests/test_trust_sandbox_registry.py` | Trust signer/revoca/key rotation, sandbox, registry envelope |
+| `tests/test_preflight_contracts.py` | Contratti minimi, schema env/policy/trust |
 
 ---
 
@@ -336,3 +416,51 @@ per rendere MindOs collaborabile e governabile su larga scala.
 La roadmap esecutiva aggiornata vive in:
 
 - `ROADMAP.md`
+
+---
+
+## 15) Contribuzione possibile (percorsi concreti)
+
+Per contribuire in modo utile e non dispersivo:
+
+### 15.1 Security contributor track
+
+- hardening trust model
+- test bypass ACL/capability
+- regression pack su registry/sandbox
+
+Output atteso:
+
+- test nuovi
+- aggiornamento `SECURITY.md` e `docs/contracts/*` se necessario
+
+### 15.2 Platform contributor track
+
+- nuovi plugin interni
+- nuovi program plugin cross-platform
+- miglioramenti scheduler/orchestrator
+
+Output atteso:
+
+- capability dichiarate
+- policy/trust/sandbox allineate
+- preflight e CI verdi
+
+### 15.3 DevEx contributor track
+
+- miglioramento script install/bootstrap/ci
+- miglioramento osservabilità locale
+- miglioramenti documentazione operativa
+
+Output atteso:
+
+- riduzione tempo setup
+- runbook chiari
+- automazione più robusta
+
+### 15.4 Regole di ingresso PR
+
+- seguire `CONTRIBUTING.md`
+- commit firmati DCO (`git commit -s`)
+- nessuna PR senza test o without rationale
+- nessuna modifica a core policy/trust senza aggiornamenti contrattuali
