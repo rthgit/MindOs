@@ -328,3 +328,11 @@ Definisci nel repository GitHub:
 - `CODEOWNERS`
 
 per rendere MindOs collaborabile e governabile su larga scala.
+
+---
+
+## 14) Roadmap ufficiale
+
+La roadmap esecutiva aggiornata vive in:
+
+- `ROADMAP.md`
