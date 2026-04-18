@@ -1,15 +1,16 @@
 ﻿# MindOs
 
-MindOs è un sistema operativo AI-native orientato a developer e power-user, progettato per avere:
+MindOs non è un altro strato sopra software scollegati: è un modello operativo in cui sistema, memoria e automazione sono un unico organismo coerente.
 
-- una sola mente orchestratrice;
-- programmi trattati come plugin con capability esplicite;
-- memoria integrata nel sistema (non separata dal software);
-- superfici multiple (`desktop`, `cli`, `ide`) governate dalla stessa semantica;
-- un solo file di bootstrap/configurazione runtime (`runtime.env.json`);
-- policy, trust chain, audit e rollback.
+L’idea centrale è semplice e radicale:
 
-L’obiettivo operativo è permettere a una persona singola di orchestrare flussi complessi senza frammentare contesto, strumenti e stato tra software separati.
+- esiste una sola mente orchestratrice che interpreta intenti, applica policy e governa l’esecuzione;
+- i programmi non sono entità isolate, ma plugin/capability sotto controllo del core;
+- ogni azione significativa diventa memoria strutturata (evento, contesto, stato, audit), quindi il sistema ricorda, collega e riusa;
+- `desktop`, `cli` e `ide` non sono prodotti separati, ma viste diverse della stessa semantica operativa;
+- bootstrap, policy e trust vivono in una configurazione unica (`runtime.env.json`) per ridurre deriva e complessità.
+
+In termini pratici, MindOs nasce per risolvere un problema concreto: permettere anche a un singolo maintainer di orchestrare flussi ad alta complessità con continuità cognitiva, sicurezza e ripetibilità, senza perdere tempo nel passaggio tra tool separati.
 
 ---
 
