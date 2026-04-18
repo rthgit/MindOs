@@ -1,0 +1,14 @@
+# Runtime and temp data
+.runtime_data/
+.ci_tmp/
+.ci_runtime_data/
+.ci_runtime_data_acl/
+.test_tmp/
+
+# Local tooling/runtime artifacts
+tools/
+__pycache__/
+*.pyc
+
+# Optional local files
+*.log

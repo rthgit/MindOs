@@ -1,0 +1,11 @@
+{
+  "user_id": "local-user",
+  "surface": "cli",
+  "project": "demo-project",
+  "action": "generate_document",
+  "requested_capability": "document.generate",
+  "payload": {
+    "title": "Weekly Report",
+    "body": "Build completed with deterministic execution."
+  }
+}
