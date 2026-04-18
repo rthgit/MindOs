@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import Any, Dict, List
 
 from core.contracts import Intent, Plan, RunResult
+from core.llm.base import LLMProvider, LLMRequest
 from core.memory.store import MemoryStore
 from core.orchestrator.policy import PolicyDecision, PolicyEngine
 from core.plugin.registry import PluginRegistry
@@ -20,15 +21,20 @@ class Orchestrator:
         plugin_registry: PluginRegistry,
         runtime: RuntimeExecutor,
         policy: PolicyEngine,
+        llm_provider: LLMProvider | None = None,
     ) -> None:
         self.memory = memory
         self.plugin_registry = plugin_registry
         self.runtime = runtime
         self.policy = policy
+        self.llm_provider = llm_provider
 
     def _hash(self, value: Dict[str, Any]) -> str:
         canonical = json.dumps(value, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _hash_text(self, value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
     def _capture(self, raw_intent: Dict[str, Any]) -> Dict[str, Any]:
         if "user_id" not in raw_intent:
@@ -73,6 +79,30 @@ class Orchestrator:
             action=intent.action,
             payload=intent.payload,
         )
+
+    def _llm_advisory(self, *, user_id: str, intent: Intent) -> Dict[str, Any] | None:
+        if self.llm_provider is None:
+            return None
+        prompt = (
+            "You are a deterministic advisory assistant. "
+            "Summarize risk and suggested constraints for this intent in <= 2 lines.\n"
+            f"user={user_id}\n"
+            f"surface={intent.surface}\n"
+            f"project={intent.project}\n"
+            f"action={intent.action}\n"
+            f"capability={intent.requested_capability}\n"
+            f"payload={json.dumps(intent.payload, sort_keys=True)}"
+        )
+        req = LLMRequest(prompt=prompt, temperature=0.0, max_tokens=120)
+        response = self.llm_provider.generate(req)
+        advisory = {
+            "provider": response.provider,
+            "model": response.model,
+            "prompt_hash": self._hash_text(prompt),
+            "response_hash": self._hash_text(response.text),
+            "response_text": response.text,
+        }
+        return advisory
 
     def _persist_pre_run(self, correlation_id: str, linked: Dict[str, Any], plan: Plan) -> None:
         self.memory.append_event("IntentAccepted", correlation_id, linked)
@@ -143,6 +173,7 @@ class Orchestrator:
         )[:20]
         linked = self._link(intent=intent, user_id=user_id)
         plan = self._build_plan(intent)
+        llm_advisory = self._llm_advisory(user_id=user_id, intent=intent)
         self._persist_pre_run(correlation_id=correlation_id, linked=linked, plan=plan)
 
         run_id = f"run-{self.memory.next_sequence()}"
@@ -163,6 +194,17 @@ class Orchestrator:
             result=result,
             policy_decision=policy_decision,
         )
+        if llm_advisory is not None:
+            self.memory.append_audit(
+                "llm_advisory",
+                correlation_id,
+                {
+                    "provider": llm_advisory["provider"],
+                    "model": llm_advisory["model"],
+                    "prompt_hash": llm_advisory["prompt_hash"],
+                    "response_hash": llm_advisory["response_hash"],
+                },
+            )
 
         return {
             "correlation_id": correlation_id,
@@ -171,6 +213,14 @@ class Orchestrator:
             "status": result.status,
             "output": result.output,
             "autonomy_level": policy_decision.autonomy_level,
+            "llm_advisory": None
+            if llm_advisory is None
+            else {
+                "provider": llm_advisory["provider"],
+                "model": llm_advisory["model"],
+                "prompt_hash": llm_advisory["prompt_hash"],
+                "response_hash": llm_advisory["response_hash"],
+            },
         }
 
     def execute_workflow_document_to_presentation(

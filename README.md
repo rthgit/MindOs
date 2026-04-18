@@ -80,6 +80,7 @@ E:\OS
 - `core/plugin/manager.py`: installazione/gestione plugin e programmi.
 - `core/plugin/trust.py`: policy trust/firme/revoche.
 - `core/plugin/program_plugin.py`: wrapper programmi esterni.
+- `core/llm/`: provider LLM pluggable (`mock`, `ollama`, `llamacpp`, `openai_compatible`).
 - `surfaces/cli/main.py`: interfaccia operativa principale.
 - `scripts/install_os.ps1`: installazione one-shot completa.
 
@@ -132,6 +133,7 @@ Campi principali:
 - `data_dir`: cartella dati runtime.
 - `allowed_capabilities`: capability globali autorizzabili.
 - `bootstrap_plugins`: plugin caricati all’avvio.
+- `llm`: provider LLM e parametri runtime (`enabled`, `provider`, `model`, `base_url`, `timeout_sec`).
 - `program_registry_file`: registry esterno opzionale (file/http/https).
 - `policy`:
   - `acl`: autorizzazioni user/surface/capability
@@ -196,6 +198,20 @@ python -m surfaces.cli.main rollback --run-id run-3
 python -m surfaces.ide.view --project demo-project
 python -m surfaces.desktop.shell --project demo-project --document-title "Doc" --document-body "Testo" --presentation-title "Deck"
 ```
+
+### 6.6 LLM runtime (cloud e on-prem)
+
+```bash
+python -m surfaces.cli.main llm-health
+python -m surfaces.cli.main llm-generate --prompt "Summarize system state"
+```
+
+Profili supportati:
+
+- `provider: "ollama"` -> endpoint locale Ollama (`http://127.0.0.1:11434`).
+- `provider: "llamacpp"` -> server locale `llama.cpp`.
+- `provider: "openai_compatible"` -> endpoint compatibile OpenAI.
+- `provider: "mock"` -> test offline deterministici.
 
 ---
 

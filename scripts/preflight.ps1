@@ -77,6 +77,13 @@ $ciEnvPath = Join-Path $tmpRoot "runtime.env.json"
   "default_project": "ci-project",
   "allowed_capabilities": ["document.generate", "presentation.generate", "program.echo.execute", "program.python.execute"],
   "bootstrap_plugins": ["document.plugin.v1", "presentation.plugin.v1"],
+  "llm": {
+    "enabled": true,
+    "provider": "mock",
+    "model": "mock-v1",
+    "timeout_sec": 20,
+    "mock_response": "advisory: deterministic-safe"
+  },
   "program_registry_file": "",
   "policy": {
     "blocked_actions": [],

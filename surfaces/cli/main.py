@@ -226,6 +226,40 @@ def cmd_program_run(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
+def cmd_llm_health(args: argparse.Namespace) -> None:
+    system = _boot(args.env)
+    provider = system.get("llm_provider")
+    if provider is None:
+        print(json.dumps({"enabled": False, "status": "disabled"}, indent=2, sort_keys=True))
+        return
+    out = provider.health()
+    out["enabled"] = True
+    print(json.dumps(out, indent=2, sort_keys=True))
+
+
+def cmd_llm_generate(args: argparse.Namespace) -> None:
+    system = _boot(args.env)
+    provider = system.get("llm_provider")
+    if provider is None:
+        raise RuntimeError("LLM provider disabled in runtime.env.json")
+    from core.llm.base import LLMRequest
+
+    out = provider.generate(
+        LLMRequest(
+            prompt=args.prompt,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
+    )
+    print(
+        json.dumps(
+            {"provider": out.provider, "model": out.model, "text": out.text},
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AI-native OS CLI surface")
     parser.add_argument("--env", default="runtime.env.json")
@@ -338,6 +372,15 @@ def build_parser() -> argparse.ArgumentParser:
     program_run.add_argument("--timeout-sec", type=int, default=30)
     program_run.add_argument("--dry-run", action="store_true")
     program_run.set_defaults(func=cmd_program_run)
+
+    llm_health = sub.add_parser("llm-health")
+    llm_health.set_defaults(func=cmd_llm_health)
+
+    llm_generate = sub.add_parser("llm-generate")
+    llm_generate.add_argument("--prompt", required=True)
+    llm_generate.add_argument("--temperature", type=float, default=0.0)
+    llm_generate.add_argument("--max-tokens", type=int, default=120)
+    llm_generate.set_defaults(func=cmd_llm_generate)
 
     return parser
 

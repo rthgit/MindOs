@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from core.llm.factory import build_llm_provider
 from core.memory.store import MemoryStore
 from core.orchestrator.engine import Orchestrator
 from core.orchestrator.policy import PolicyEngine
@@ -39,7 +40,14 @@ def boot_system(env_file: str) -> Dict[str, Any]:
     plugin_manager.sync_registry_from_installed()
     runtime = RuntimeExecutor()
     policy = PolicyEngine(config=env.get("policy", {}))
-    orchestrator = Orchestrator(memory=memory, plugin_registry=plugin_registry, runtime=runtime, policy=policy)
+    llm_provider = build_llm_provider(env.get("llm", {}))
+    orchestrator = Orchestrator(
+        memory=memory,
+        plugin_registry=plugin_registry,
+        runtime=runtime,
+        policy=policy,
+        llm_provider=llm_provider,
+    )
 
     return {
         "env": env,
@@ -48,5 +56,6 @@ def boot_system(env_file: str) -> Dict[str, Any]:
         "plugin_manager": plugin_manager,
         "runtime": runtime,
         "policy": policy,
+        "llm_provider": llm_provider,
         "orchestrator": orchestrator,
     }
