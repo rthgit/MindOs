@@ -213,6 +213,12 @@ Profili supportati:
 - `provider: "openai_compatible"` -> endpoint compatibile OpenAI.
 - `provider: "mock"` -> test offline deterministici.
 
+Modalita di selezione dal file env (`runtime.env.json`):
+
+- `llm.source: "env"` -> usa profilo `llm.env` (o fallback flat `llm.*`)
+- `llm.source: "api"` -> usa profilo `llm.api` (endpoint API)
+- `llm.source: "local"` -> usa profilo `llm.local` (Ollama/llama.cpp on-prem)
+
 ---
 
 ## 7) Program registry esterno
