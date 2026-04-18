@@ -1,0 +1,30 @@
+# MindOs CODEOWNERS
+#
+# Default owner
+* @rthgit
+
+# Core critical paths
+/core/orchestrator/ @rthgit
+/core/plugin/ @rthgit
+/core/memory/ @rthgit
+/core/bootstrap/ @rthgit
+/core/runtime/ @rthgit
+/core/platform/ @rthgit
+
+# Security & policy
+/runtime.env.json @rthgit
+/SECURITY.md @rthgit
+/scripts/install_os.ps1 @rthgit
+
+# Governance docs
+/LICENSE @rthgit
+/CONTRIBUTING.md @rthgit
+/docs/contracts/ @rthgit
+
+# Surfaces
+/surfaces/ @rthgit
+
+# Tests and CI
+/tests/ @rthgit
+/scripts/preflight.ps1 @rthgit
+/scripts/ci_local.ps1 @rthgit
